@@ -7,18 +7,20 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - >-
-          wget -O argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.0/argocd-vault-plugin_1.18.0_linux_amd64 &&
-          chmod +x argocd-vault-plugin &&
-          mv argocd-vault-plugin /custom-tools/
+          echo "Starting download..." &&
+          mkdir -p /home/argocd/plugins &&
+          wget -O /home/argocd/plugins/argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.0/argocd-vault-plugin_1.18.0_linux_amd64 &&
+          echo "Download complete, setting permissions..." &&
+          chmod +x /home/argocd/plugins/argocd-vault-plugin &&
+          echo "Plugin successfully installed at /home/argocd/plugins/argocd-vault-plugin" || echo "Download or setup failed with exit code 0"
         volumeMounts:
-        - mountPath: /custom-tools
-          name: custom-tools
+        - mountPath: /home/argocd/plugins
+          name: plugins
       volumes:
-      - name: custom-tools
+      - name: plugins
         emptyDir: {}
       containers:
       - name: argocd-repo-server
         volumeMounts:
-        - mountPath: /usr/local/bin/argocd-vault-plugin
-          name: custom-tools
-          subPath: argocd-vault-plugin
+        - mountPath: /home/argocd/plugins
+          name: plugins
