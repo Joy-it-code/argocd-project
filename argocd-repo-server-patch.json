@@ -1,0 +1,41 @@
+[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/initContainers",
+    "value": [
+      {
+        "name": "download-tools",
+        "image": "alpine:3.8",
+        "command": ["/bin/sh", "-c"],
+        "args": [
+          "wget -O argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.0/argocd-vault-plugin_1.18.0_linux_amd64 && chmod +x argocd-vault-plugin && mv argocd-vault-plugin /custom-tools/"
+        ],
+        "volumeMounts": [
+          {
+            "mountPath": "/custom-tools",
+            "name": "custom-tools"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/volumes",
+    "value": [
+      {
+        "name": "custom-tools",
+        "emptyDir": {}
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/volumeMounts/-",
+    "value": {
+      "mountPath": "/usr/local/bin/argocd-vault-plugin",
+      "name": "custom-tools",
+      "subPath": "argocd-vault-plugin"
+    }
+  }
+]

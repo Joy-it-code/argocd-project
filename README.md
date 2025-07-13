@@ -519,9 +519,58 @@ echo $VAULT_ADDR
 echo $VAULT_TOKEN
 vault kv put secret/my-app password=mypassword
 vault kv get secret/my-app
+vault status
 ```
 ![](./img/4a.vault.secret.png)
 
+
+
+### Create and Apply Strategic Patch
+
+- Create a strategic merge patch file (e.g., argocd-repo-server-patch.yaml):
+
+```bash
+cat <<EOF > argocd-repo-server-patch.yaml
+spec:
+  template:
+    spec:
+      initContainers:
+      - name: download-tools
+        image: alpine:3.8
+        command: ["/bin/sh", "-c"]
+        args:
+        - >-
+          wget -O argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.0/argocd-vault-plugin_1.18.0_linux_amd64 &&
+          chmod +x argocd-vault-plugin &&
+          mv argocd-vault-plugin /custom-tools/
+        volumeMounts:
+        - mountPath: /custom-tools
+          name: custom-tools
+      volumes:
+      - name: custom-tools
+        emptyDir: {}
+      containers:
+      - name: argocd-repo-server
+        volumeMounts:
+        - mountPath: /usr/local/bin/argocd-vault-plugin
+          name: custom-tools
+          subPath: argocd-vault-plugin
+EOF
+```
+
+### Apply the strategic merge patch:
+```bash
+kubectl patch deployment argocd-repo-server -n argocd --patch "$(cat argocd-repo-server-patch.yaml)" --type=strategic
+```
+![](./img/4b.kube.patch.png)
+
+
+### Verify the Patch
+
+```bash
+kubectl get pods -n argocd
+```
+![](./img/4c.get.argocd.png)
 
 
 
