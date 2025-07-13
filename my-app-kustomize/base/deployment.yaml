@@ -19,7 +19,4 @@ spec:
         - containerPort: 80
         env:
         - name: MY_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: my-secret
-              key: password
+          value: <path:secret/data/my-app#password>

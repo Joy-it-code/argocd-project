@@ -9,6 +9,13 @@ spec:
        repoURL: https://github.com/Joy-it-code/argocd-project.git
        path: my-app-kustomize/overlays/dev
        targetRevision: main
+       plugin:
+         name: argocd-vault-plugin
+         env:
+         - name: VAULT_ADDR
+           value: http://localhost:8200
+         - name: VAULT_TOKEN
+           value: myroot
      destination:
        server: https://kubernetes.default.svc
        namespace: default

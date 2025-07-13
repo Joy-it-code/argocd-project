@@ -495,3 +495,87 @@ argocd app get my-app-kustomize
 kubectl get pods
 kubectl describe pod <my-app-pod-name>
 ```
+![](./img/3d.get.secret.png)
+![](./img/3e.describe.pod.secret.png)
+![](./img/3f.pod.secret.contd.png)
+
+
+## 6: Integrate HashiCorp Vault
+Pull the Correct Vault Image
+```bash
+docker pull hashicorp/vault:latest
+docker images
+```
+
+
+- Set Up Vault:
+```bash
+docker run -d --name vault -p 8200:8200 -e 'VAULT_DEV_ROOT_TOKEN_ID=myroot' hashicorp/vault
+docker ps
+vault --version
+export VAULT_ADDR='http://localhost:8200'
+export VAULT_TOKEN='myroot'
+echo $VAULT_ADDR
+echo $VAULT_TOKEN
+vault kv put secret/my-app password=mypassword
+vault kv get secret/my-app
+```
+![](./img/4a.vault.secret.png)
+
+
+
+
+###  Update the Deployment for Vault 
+- Modify `my-app-kustomize/base/deployment.yaml`
+```bash
+           env:
+           - name: MY_PASSWORD
+             value: <path:secret/my-app#password>
+```
+
+
+### Push the change to Git:
+```bash
+git add my-app-kustomize/base/deployment.yaml
+git commit -m "Update deployment to use Vault secret with data path"
+git push
+```
+
+### Update ArgoCD for Vault
+- Modify `kustomize-app.yaml`
+```bash
+       targetRevision: main
+       plugin:
+         name: argocd-vault-plugin
+         env:
+         - name: VAULT_ADDR
+           value: http://localhost:8200
+         - name: VAULT_TOKEN
+           value: myroot
+     destination:
+       server: https://kubernetes.default.svc
+       namespace: default
+     syncPolicy:
+       automated:
+         prune: true
+         selfHeal: true
+```
+
+
+### Apply the change:
+```bash
+kubectl apply -f kustomize-app.yaml
+```
+
+
+### Sync the application:
+```bash
+argocd app sync my-app-kustomize
+```
+
+
+Verify:
+```bash
+argocd app get my-app-kustomize
+kubectl describe pod my-app-79db948976-ctdsh
+```
