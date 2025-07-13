@@ -5,15 +5,26 @@
 
 ```bash
 my-argocd-project/
-├── helm/
-│ └── my-app/ 
-├── kustomize/
-│ └── my-app/
-│ ├── base/ 
-│ └── overlays/
-│ ├── dev/ 
-│ └── prod/ 
-└── secrets/ 
+├── my-app/                    
+│   ├── Chart.yaml             
+│   ├── values.yaml            
+│   └── templates/             
+│       ├── deployment.yaml    
+│       └── service.yaml      
+├── my-app-kustomize/         
+│   ├── base/                 
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   ├── myresource.yaml    
+│   │   └── kustomization.yaml
+│   └── overlays/
+│       └── dev/               
+│           ├── patch.yaml     
+│           └── kustomization.yaml
+├── helm-app.yaml              
+├── kustomize-app.yaml         
+├── myresource-crd.yaml        
+└── argocd-cm.yaml
 ```
 
 ## Prerequisites
@@ -97,7 +108,7 @@ git init
 
 ```bash
 git add .
-git commit -m "initial Helm chart commit for my-app"
+git commit -m "initial commit"
 git branch -M main
 git remote add origin https://github.com/your-username/argocd-project.git
 git push -u origin main
@@ -105,83 +116,70 @@ git push -u origin main
 
 
 
-
-
-## Integrating Helm with ArgoCD
-
-- Create a Helm chart:
+## Create a Helm Chart
 ```bash
 helm create my-app
 ```
 
 ## Simplify the Helm chart
 
-### Remove the ServiceAccount Template
+- Edit `my-app/Chart.yaml`
 ```bash
-rm my-app/templates/serviceaccount.yaml
-rm my-app/templates/hpa.yaml
+apiVersion: v2
+   name: my-app
+   description: A simple Helm chart for a toy app
+   version: 0.1.0
 ```
 
 
-- Edit `values.yaml`
+- Edit `my-app/values.yaml`
 ```bash
 replicaCount: 1
 
-image:
-  repository: nginx
-  tag: "latest"
-  pullPolicy: IfNotPresent
+   image:
+     repository: nginx
+     tag: "latest"
+     pullPolicy: IfNotPresent
 
-service:
-  type: ClusterIP
-  port: 80
+   service:
+     type: ClusterIP
+     port: 80
 
-ingress:
-  enabled: true
-  hosts:
-    - host: my-app.local
-      paths:
-        - path: /
-          pathType: Prefix
-          backend:
-            service:
-              name: my-app
-              port:
-                number: 8080
+   ingress:
+     enabled: false
 ```
 
 
-- Edit `deployment.yaml`
+
+
+### Edit the service in `my-app/templates/deployment.yaml`
+
 ```bash
 apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "my-app.fullname" . }}
-  labels:
-    {{- include "my-app.labels" . | nindent 4 }}
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      {{- include "my-app.selectorLabels" . | nindent 6 }}
-  template:
-    metadata:
-      labels:
-        {{- include "my-app.selectorLabels" . | nindent 8 }}
-    spec:
-      containers:
-        - name: {{ .Chart.Name }}
-          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: 80
-              protocol: TCP
+   kind: Deployment
+   metadata:
+     name: {{ .Release.Name }}
+   spec:
+     replicas: {{ .Values.replicaCount }}
+     selector:
+       matchLabels:
+         app: {{ .Release.Name }}
+     template:
+       metadata:
+         labels:
+           app: {{ .Release.Name }}
+       spec:
+         containers:
+         - name: my-app
+           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+           imagePullPolicy: {{ .Values.image.pullPolicy }}
+           ports:
+           - containerPort: 80
 ```
 
 
 
-### Update the service in my-app/templates/service.yaml:
+### Edit the service in `my-app/templates/service.yaml`:
 
 ```bash
 nano my-app/templates/service.yaml
@@ -190,20 +188,16 @@ nano my-app/templates/service.yaml
 ### Paste:
 ```bash
 apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "my-app.fullname" . }}
-  labels:
-    {{- include "my-app.labels" . | nindent 4 }}
-spec:
-  type: ClusterIP
-  ports:
-    - port: 8080
-      targetPort: 80
-      protocol: TCP
-      name: http
-  selector:
-    {{- include "my-app.selectorLabels" . | nindent 6 }}
+   kind: Service
+   metadata:
+     name: {{ .Release.Name }}
+   spec:
+     selector:
+       app: {{ .Release.Name }}
+     ports:
+     - port: {{ .Values.service.port }}
+       targetPort: 80
+     type: {{ .Values.service.type }}
 ```
 
 
@@ -213,97 +207,223 @@ helm lint my-app
 ```
 
 
+### Push the Helm chart to Git:
+
+```bash
+git add my-app
+git commit -m "Add Helm chart for my-app"
+git push
+```
+
+### Test:
+- Run a Helm dry-run to check the chart:
+```bash
+helm template my-app ./my-app
+```
 
 
+## 3: Deploy the Helm Chart with ArgoCD
 
-
-
-### argocd account list
-
-## Create an ArgoCD Application for the Helm chart
-
-- Create a file called helm-app.yaml:
+- Create an ArgoCD application for the Helm chart:
 ```bash
 nano helm-app.yaml
+```
+
+```bash
+apiVersion: argoproj.io/v1alpha1
+   kind: Application
+   metadata:
+     name: my-app-helm
+     namespace: argocd
+   spec:
+     project: default
+     source:
+       repoURL: https://github.com/your-username/my-gitops-project.git
+       path: my-app
+       targetRevision: main
+     destination:
+       server: https://kubernetes.default.svc
+       namespace: default
+     syncPolicy:
+       automated:
+         prune: true
+         selfHeal: true
+```
+
+### Apply the application and Check ArgoCD::
+```bash
+kubectl apply -f helm-app.yaml
+argocd app list
+argocd app get my-app-helm
+```
+![](./img/2a.kube.apply.png)
+![](./img/2b.argocd.list.png)
+
+
+or visit `http://localhost:8080` on Browser
+
+![](./img/2c.health.page1..png)
+![](./img/2d.sync.page1.png)
+
+
+### Check the deployment and service:
+```bash
+kubectl get deployments
+kubectl get services
+```
+![](./img/2e.get.svc.deplymt.png)
+
+
+
+## 4: Create a Kustomize Configuration
+
+- Create a Kustomize base:
+```bash
+mkdir -p my-app-kustomize/base
+```
+
+
+### Create `my-app-kustomize/base/deployment.yaml` file
+
+#### Paste:
+```bash
+apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: my-app
+   spec:
+     replicas: 1
+     selector:
+       matchLabels:
+         app: my-app
+     template:
+       metadata:
+         labels:
+           app: my-app
+       spec:
+         containers:
+         - name: my-app
+           image: nginx:latest
+           ports:
+           - containerPort: 80
+```
+
+
+### Create `my-app-kustomize/base/service.yaml` File
+
+#### Paste:
+```bash
+apiVersion: v1
+   kind: Service
+   metadata:
+     name: my-app
+   spec:
+     selector:
+       app: my-app
+     ports:
+     - port: 80
+       targetPort: 80
+     type: ClusterIP
+```
+
+
+### Create `my-app-kustomize/base/kustomization.yaml` File
+
+#### Paste:
+```bash
+apiVersion: kustomize.config.k8s.io/v1beta1
+   kind: Kustomization
+   resources:
+   - deployment.yaml
+   - service.yaml
+```
+
+
+
+### Create a dev overlay:
+
+```bash
+mkdir -p my-app-kustomize/overlays/dev
+```
+
+### Create `my-app-kustomize/overlays/dev/patch.yaml` File
+
+
+#### Paste:
+```bash
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: my-app
+    spec:
+     replicas: 2
+```
+
+### Create `my-app-kustomize/overlays/dev/kustomization.yaml` File
+
+#### Paste:
+```bash
+resources:
+  - ../../base
+patches:
+  - path: patch.yaml
+    target:
+      kind: Deployment
+      name: my-app
+```
+
+
+Push to Git:
+```bash
+git add my-app-kustomize
+git commit -m "Add Kustomize configuration"
+git push 
+```
+
+### Test dev overlay:
+```bash
+kubectl kustomize my-app-kustomize/overlays/dev
+```
+
+
+## 5: Deploy the Kustomize Configuration with ArgoCD
+
+- Create an ArgoCD application for Kustomize:
+```bash
+touch kustomize-app.yaml
 ```
 
 #### Paste:
 ```bash
 apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: my-app-helm
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/your-username/my-argocd-project.git
-    path: my-app
-    targetRevision: main
-    helm:
-      releaseName: my-app
-      values: |
-        replicaCount: 1
-        image:
-          repository: nginx
-          tag: "latest"
-        service:
-          type: ClusterIP
-          port: 80
-        ingress:
-          enabled: true
-          hosts:
-            - host: my-app.local
-              paths:
-                - path: /
-                  pathType: Prefix
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: default
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-```
+   kind: Application
+   metadata:
+     name: my-app-kustomize
+     namespace: argocd
+   spec:
+     project: default
+     source:
+       repoURL: https://github.com/your-username/argocd-project.git
+       path: my-app-kustomize/overlays/dev
+       targetRevision: main
+     destination:
+       server: https://kubernetes.default.svc
+       namespace: default
+     syncPolicy:
+       automated:
+         prune: true
+         selfHeal: true
+```         
 
 
-## Push to GitHub
+### Apply the application:
 ```bash
-git add .
-git commit -m "helm-app" 
-git push
+kubectl apply -f kustomize-app.yaml
 ```
 
-
-
-## Apply the Application to ArgoCD
+### Check ArgoCD
 ```bash
-kubectl apply -f helm-app.yaml
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+argocd app list
+argocd app get my-app-kustomize
 ```
-
-- Check the Application in ArgoCD
-```bash
-argocd app get my-app-helm
-```
-
-or visit the ArgoCD web interface `http://<ARGO_SERVER>`
-
-
-## Check Pod and Application Status:
-```bash
-kubectl get pods -n default
-kubectl describe pod <POD-NAME> -n default
-```
-
-
-
-
-## Check Minikube Tunnel, Ingress and Check Pod Acessibility:
-```bash
-minikube tunnel
-kubectl get ingress -n default
-kubectl exec -it my-app-699fd68b64-q69mm -n default -- curl http://localhost
-```
-![](./img/1b.kube.exec.locally.png)
-
-
