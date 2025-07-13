@@ -416,14 +416,82 @@ apiVersion: argoproj.io/v1alpha1
 ```         
 
 
+### Test Locally:
+```bash
+kubectl kustomize my-app-kustomize/overlays/dev
+```
+
 ### Apply the application:
 ```bash
 kubectl apply -f kustomize-app.yaml
 ```
 
+
+### Test:
+```bash
+kubectl apply -k my-app-kustomize/overlays/dev --dry-run=client
+```
+
+
+### Push Changes to Git
+```bash
+git add my-app-kustomize
+git commit -m "Add missing kustomization.yaml to base and fix configuration"
+git push
+```
+
+
+
 ### Check ArgoCD
 ```bash
-kubectl port-forward svc/argocd-server -n argocd 8080:443
 argocd app list
 argocd app get my-app-kustomize
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+![](./img/3b.argocd.get.list.png)
+![](./img/2f.healthy.page.for.2.png)
+![](./img/3a.kustomize.sync.png)
+
+
+### Check the deployment in Kubernetes:
+```bash
+kubectl get deployments
+kubectl get services
+kubectl get pods
+```
+![](./img/3c.get.pods.png)
+
+
+### 6: Secrets Management and Best Practices in ArgoCD
+
+- Create a Kubernetes Secret:
+```bash
+kubectl create secret generic my-secret --from-literal=password=mypassword
+```
+
+### Update `my-app-kustomize/base/deployment.yaml`
+#### Add:
+```bash
+           env:
+           - name: MY_PASSWORD
+             valueFrom:
+               secretKeyRef:
+                 name: my-secret
+                 key: password
+```
+
+### Push Changes to Git:
+```bash
+git add my-app-kustomize/base/deployment.yaml
+git commit -m "Add secret to Kustomize deployment"
+git push
+```
+
+### Confirm Secret Usuage:
+```bash
+kubectl get secrets
+argocd app sync my-app-kustomize
+argocd app get my-app-kustomize
+kubectl get pods
+kubectl describe pod <my-app-pod-name>
 ```
