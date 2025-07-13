@@ -17,3 +17,9 @@ spec:
         image: nginx:latest
         ports:
         - containerPort: 80
+        env:
+        - name: MY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: my-secret
+              key: password
