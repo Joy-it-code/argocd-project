@@ -540,14 +540,21 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - >-
-          wget -O /usr/local/bin/argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.0/argocd-vault-plugin_1.18.0_linux_amd64 &&
-          chmod +x /usr/local/bin/argocd-vault-plugin &&
-          echo "Plugin installed at /usr/local/bin/argocd-vault-plugin"
-        volumeMounts: []
-      volumes: []
+          wget -O argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.0/argocd-vault-plugin_1.18.0_linux_amd64 &&
+          chmod +x argocd-vault-plugin &&
+          mv argocd-vault-plugin /custom-tools/
+        volumeMounts:
+        - mountPath: /custom-tools
+          name: custom-tools
+      volumes:
+      - name: custom-tools
+        emptyDir: {}
       containers:
       - name: argocd-repo-server
-        volumeMounts: []
+        volumeMounts:
+        - mountPath: /usr/local/bin/argocd-vault-plugin
+          name: custom-tools
+          subPath: argocd-vault-plugin
 EOF
 ```
 
@@ -620,4 +627,18 @@ Verify:
 ```bash
 argocd app get my-app-kustomize
 kubectl describe pod my-app-79db948976-ctdsh
+```
+
+
+### Apply and Restart updated server
+```bash
+kubectl apply -f repo-server.yaml
+kubectl rollout restart deployment argocd-repo-server -n argocd
+```
+
+
+### Monitor and Verify the Pods:
+```bash
+kubectl get pods -n argocd -w
+kubectl describe pod <new-pod-name> -n argocd
 ```
