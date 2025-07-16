@@ -43,6 +43,7 @@ spec:
             echo "Attempting to download plugin..." && \
             wget --timeout=30 -O /home/argocd/cmp-server/argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.0/argocd-vault-plugin_1.18.0_linux_amd64 || { echo "Download failed with exit code: $?"; exit 1; } && \
             chmod +x /home/argocd/cmp-server/argocd-vault-plugin && \
+            chown 999:999 /home/argocd/cmp-server/argocd-vault-plugin && \
             ls -l /home/argocd/cmp-server && \
             echo "Plugin installed."
         volumeMounts:
