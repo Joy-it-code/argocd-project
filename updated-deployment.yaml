@@ -98,9 +98,6 @@ spec:
         volumeMounts:
         - mountPath: /home/argocd/plugins
           name: plugins
-        - mountPath: /usr/local/bin/argocd-vault-plugin
-          name: custom-tools
-          subPath: argocd-vault-plugin
         - mountPath: /app/config/ssh
           name: ssh-known-hosts
         - mountPath: /app/config/tls
