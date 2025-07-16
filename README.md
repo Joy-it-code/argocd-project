@@ -640,5 +640,6 @@ kubectl rollout restart deployment argocd-repo-server -n argocd
 ### Monitor and Verify the Pods:
 ```bash
 kubectl get pods -n argocd -w
+kubectl get pods -n argocd
 kubectl describe pod <new-pod-name> -n argocd
 ```
