@@ -1,0 +1,170 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "13"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/name":"argocd-repo-server","app.kubernetes.io/part-of":"argocd"},"name":"argocd-repo-server","namespace":"argocd"},"spec":{"selector":{"matchLabels":{"app.kubernetes.io/name":"argocd-repo-server"}},"template":{"metadata":{"labels":{"app.kubernetes.io/name":"argocd-repo-server"}},"spec":{"affinity":{"podAntiAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchLabels":{"app.kubernetes.io/name":"argocd-repo-server"}},"topologyKey":"kubernetes.io/hostname"},"weight":100},{"podAffinityTerm":{"labelSelector":{"matchLabels":{"app.kubernetes.io/part-of":"argocd"}},"topologyKey":"kubernetes.io/hostname"},"weight":5}]}},"automountServiceAccountToken":false,"containers":[{"args":["/usr/local/bin/argocd-repo-server"],"env":[{"name":"REDIS_PASSWORD","valueFrom":{"secretKeyRef":{"key":"auth","name":"argocd-redis"}}},{"name":"HELM_DATA_HOME","value":"/helm-working-dir"}],"image":"quay.io/argoproj/argocd:v3.0.6","imagePullPolicy":"Always","livenessProbe":{"failureThreshold":3,"httpGet":{"path":"/healthz?full=true","port":8084,"scheme":"HTTP"},"initialDelaySeconds":30,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":5},"name":"argocd-repo-server","ports":[{"containerPort":8081,"protocol":"TCP"},{"containerPort":8084,"protocol":"TCP"}],"readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/healthz","port":8084,"scheme":"HTTP"},"initialDelaySeconds":5,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":1},"resources":{},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"volumeMounts":[{"mountPath":"/app/config/ssh","name":"ssh-known-hosts"},{"mountPath":"/app/config/tls","name":"tls-certs"},{"mountPath":"/app/config/reposerver/tls","name":"argocd-repo-server-tls"},{"mountPath":"/tmp","name":"tmp"},{"mountPath":"/helm-working-dir","name":"helm-working-dir"},{"mountPath":"/home/argocd/cmp-server/plugins","name":"plugins"}]}],"nodeSelector":{"kubernetes.io/os":"linux"},"volumes":[{"configMap":{"name":"argocd-ssh-known-hosts-cm"},"name":"ssh-known-hosts"},{"configMap":{"name":"argocd-tls-certs-cm"},"name":"tls-certs"},{"name":"argocd-repo-server-tls","secret":{"items":[{"key":"tls.crt","path":"tls.crt"},{"key":"tls.key","path":"tls.key"},{"key":"ca.crt","path":"ca.crt"}],"optional":true,"secretName":"argocd-repo-server-tls"}},{"emptyDir":{},"name":"tmp"},{"emptyDir":{},"name":"helm-working-dir"},{"emptyDir":{},"name":"plugins"},{"emptyDir":{},"name":"var-files"}]}}}}
+  creationTimestamp: "2025-07-14T18:02:52Z"
+  generation: 13
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-repo-server
+  namespace: argocd
+  resourceVersion: "99176"
+  uid: 06a3f4df-9554-4ccb-9d37-92f509191924
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: argocd-repo-server
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: argocd-repo-server
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/part-of: argocd
+              topologyKey: kubernetes.io/hostname
+            weight: 5
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - /usr/local/bin/argocd-repo-server
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: auth
+              name: argocd-redis
+        - name: HELM_DATA_HOME
+          value: /helm-working-dir
+        image: quay.io/argoproj/argocd:v3.0.6
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz?full=true
+            port: 8084
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: argocd-repo-server
+        ports:
+        - containerPort: 8081
+          protocol: TCP
+        - containerPort: 8084
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 8084
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /app/config/ssh
+          name: ssh-known-hosts
+        - mountPath: /app/config/tls
+          name: tls-certs
+        - mountPath: /app/config/reposerver/tls
+          name: argocd-repo-server-tls
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /helm-working-dir
+          name: helm-working-dir
+        - mountPath: /home/argocd/cmp-server/plugins
+          name: plugins
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: argocd-ssh-known-hosts-cm
+        name: ssh-known-hosts
+      - configMap:
+          defaultMode: 420
+          name: argocd-tls-certs-cm
+        name: tls-certs
+      - name: argocd-repo-server-tls
+        secret:
+          defaultMode: 420
+          items:
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key
+          - key: ca.crt
+            path: ca.crt
+          optional: true
+          secretName: argocd-repo-server-tls
+      - emptyDir: {}
+        name: tmp
+      - emptyDir: {}
+        name: helm-working-dir
+      - emptyDir: {}
+        name: plugins
+      - emptyDir: {}
+        name: var-files
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2025-07-16T18:11:12Z"
+    lastUpdateTime: "2025-07-16T18:11:12Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2025-07-16T18:11:12Z"
+    lastUpdateTime: "2025-07-16T18:11:12Z"
+    message: ReplicaSet "argocd-repo-server-86c47d6564" is progressing.
+    reason: ReplicaSetUpdated
+    status: "True"
+    type: Progressing
+  observedGeneration: 13
+  readyReplicas: 1
+  replicas: 2
+  unavailableReplicas: 1
+  updatedReplicas: 1
