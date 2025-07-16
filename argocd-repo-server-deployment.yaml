@@ -31,6 +31,23 @@ spec:
               topologyKey: kubernetes.io/hostname
             weight: 5
       automountServiceAccountToken: false
+      initContainers:
+      - name: download-argocd-vault-plugin
+        image: alpine:3.19
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "Starting plugin download..." && \
+            mkdir -p /home/argocd/cmp-server && \
+            echo "Attempting to download plugin..." && \
+            wget --timeout=30 -O /home/argocd/cmp-server/argocd-vault-plugin https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v1.18.0/argocd-vault-plugin_1.18.0_linux_amd64 || { echo "Download failed with exit code: $?"; exit 1; } && \
+            chmod +x /home/argocd/cmp-server/argocd-vault-plugin && \
+            ls -l /home/argocd/cmp-server && \
+            echo "Plugin installed."
+        volumeMounts:
+        - mountPath: /home/argocd/cmp-server
+          name: plugins
       containers:
       - name: argocd-repo-server
         image: quay.io/argoproj/argocd:v3.0.6
@@ -76,13 +93,13 @@ spec:
           capabilities:
             drop:
             - ALL
-          readOnlyRootFilesystem: true
+          #readOnlyRootFilesystem: true
           runAsNonRoot: true
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
-        - mountPath: /app/config/ssh
-          name: ssh-known-hosts
+        - mountPath: /home/argocd/cmp-server
+          name: plugins
         - mountPath: /app/config/tls
           name: tls-certs
         - mountPath: /app/config/reposerver/tls
@@ -91,21 +108,8 @@ spec:
           name: tmp
         - mountPath: /helm-working-dir
           name: helm-working-dir
-        - mountPath: /home/argocd/cmp-server/plugins
+        - mountPath: /home/argocd/cmp-server
           name: plugins
-      initContainers:
-      - name: copyutil
-        command:
-        - /bin/cp
-        args:
-        - --update=none
-        - /usr/local/bin/argocd
-        - /var/run/argocd/argocd-cmp-server
-        image: quay.io/argoproj/argocd:v3.0.6
-        imagePullPolicy: IfNotPresent
-        volumeMounts:
-        - mountPath: /var/run/argocd
-          name: var-files
       nodeSelector:
         kubernetes.io/os: linux
       volumes:
@@ -133,4 +137,4 @@ spec:
       - emptyDir: {}
         name: plugins
       - emptyDir: {}
-        name: var-files
+        name: gpg-keys
